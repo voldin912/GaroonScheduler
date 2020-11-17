@@ -1,7 +1,8 @@
 # garoon-schedule-hoster
 
 雑にGaroon APIのJSONを受け付けてホストするアプリケーションです。
-参照カレンダーとして利用することを想定しています。
+
+WebHookでうけつけたデータを参照カレンダーとして利用することを想定しています。
 
 ## スケジュールの保存
 
@@ -26,6 +27,8 @@ curl -d @data/example.json -X PUT 'https://example.com/?name=test&secret=hoge'
 利用可能な拡張子は `ics` `json` のみです。
 
 拡張子 `ics` にて `url` パラメータを指定した場合、イベントに指定されたURLをベースとしたイベントURLを付与します。
+
+※ 保存時の `name` `secret` `iv` が一致しない場合取得することができません。
 
 ```sh
 curl 'https://example.com/?name=test&secret=hoge&ext=ics&url=https://example.com/scripts/grn.exe'
