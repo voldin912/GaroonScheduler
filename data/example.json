@@ -1,0 +1,143 @@
+{
+  "events": [
+    {
+      "id": "1207914",
+      "creator": {
+        "id": "786",
+        "code": "j-smith",
+        "name": "John Smith"
+      },
+      "createdAt": "2020-11-09T02:16:50Z",
+      "updater": {
+        "id": "260",
+        "code": "m-soe",
+        "name": "Mary Sue"
+      },
+      "updatedAt": "2020-11-16T09:09:36Z",
+      "eventType": "REGULAR",
+      "eventMenu": "MTG",
+      "subject": "なにかの会議 vol 2",
+      "notes": "なにかについて話し合います\nもちろん説明は複数行にわかれて問題ありません。",
+      "isAllDay": false,
+      "isStartOnly": false,
+      "attendees": [
+        {
+          "id": "786",
+          "code": "j-smith",
+          "name": "John Smith",
+          "type": "USER"
+        },
+        {
+          "id": "260",
+          "code": "m-soe",
+          "name": "Mary Sue",
+          "type": "USER"
+        }
+      ],
+      "companyInfo": {
+        "name": "",
+        "zipCode": "",
+        "address": "",
+        "route": "",
+        "routeTime": "",
+        "routeFare": "",
+        "phone": ""
+      },
+      "attachments": [
+
+      ],
+      "start": {
+        "dateTime": "2020-11-18T17:00:00+09:00",
+        "timeZone": "Asia/Tokyo"
+      },
+      "end": {
+        "dateTime": "2020-11-18T17:50:00+09:00",
+        "timeZone": "Asia/Tokyo"
+      },
+      "originalStartTimeZone": "Asia/Tokyo",
+      "originalEndTimeZone": "Asia/Tokyo",
+      "facilities": [
+
+      ],
+      "visibilityType": "PUBLIC",
+      "useAttendanceCheck": false,
+      "additionalItems": {
+        "item": {
+          "value": ""
+        }
+      }
+    },
+    {
+      "id": "1207338",
+      "creator": {
+        "id": "1158",
+        "code": "j-doe",
+        "name": "John Doe"
+      },
+      "createdAt": "2020-11-06T08:05:49Z",
+      "updater": {
+        "id": "1158",
+        "code": "j-doe",
+        "name": "John Doe"
+      },
+      "updatedAt": "2020-11-16T00:56:08Z",
+      "eventType": "REGULAR",
+      "eventMenu": "WebMTG",
+      "subject": "オンラインミーティング",
+      "notes": "詳細は以下のURLを確認してください\n\nhttps://example.com/\n\n前回までのあらすじ\n\n前回はなにもきまらなかった",
+      "isAllDay": false,
+      "isStartOnly": false,
+      "attendees": [
+        {
+          "id": "786",
+          "code": "j-smith",
+          "name": "John Smith",
+          "type": "USER"
+        },
+        {
+          "id": "260",
+          "code": "m-soe",
+          "name": "Mary Sue",
+          "type": "USER"
+        }
+      ],
+      "companyInfo": {
+        "name": "",
+        "zipCode": "",
+        "address": "",
+        "route": "",
+        "routeTime": "",
+        "routeFare": "",
+        "phone": ""
+      },
+      "attachments": [
+
+      ],
+      "start": {
+        "dateTime": "2020-11-16T12:00:00+09:00",
+        "timeZone": "Asia/Tokyo"
+      },
+      "end": {
+        "dateTime": "2020-11-16T13:30:00+09:00",
+        "timeZone": "Asia/Tokyo"
+      },
+      "originalStartTimeZone": "Asia/Tokyo",
+      "originalEndTimeZone": "Asia/Tokyo",
+      "facilities": [
+        {
+          "id": "19",
+          "name": "Meeting Room1",
+          "code": "room1"
+        }
+      ],
+      "visibilityType": "PUBLIC",
+      "useAttendanceCheck": false,
+      "additionalItems": {
+        "item": {
+          "value": ""
+        }
+      }
+    }
+  ],
+  "hasNext": false
+}
