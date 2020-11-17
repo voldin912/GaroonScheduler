@@ -9,17 +9,29 @@ function run() {
     $name = isset($_GET['name']) ? $_GET['name'] : '';
     $ext = isset($_GET['ext']) ? $_GET['ext'] : 'json';
     $url = isset($_GET['url']) ? rtrim($_GET['url'], '/') : '';
+    $secret = isset($_GET['secret']) ? $_GET['secret'] : '';
+
+    $cryptMethod = 'AES-256-CBC';
+    $hexIV = isset($_GET['iv']) ? $_GET['iv'] : 'b995ee5e4149975a575973f180192b1c';
+    $iv = hex2bin($hexIV);
 
     if ($name === '') {
         http_response_code(400);
         die('name required.');
     }
+    if (!preg_match('/\A[a-z0-9\-]\z/', $name)) {
+        http_response_code(400);
+        die('name must be alpha, number, and hyphen.');
+    }
 
     if ($method === 'POST' || $method === 'PUT') {
         $data = file_get_contents('php://input');
-        if (json_decode($data) === null || !isset($data['events'])) {
+        if (json_decode($data) === null) {
             http_response_code(400);
             die('invalid json data');
+        }
+        if ($secret !== '') {
+            $data = openssl_encrypt($data, $cryptMethod, $secret, 0, $iv);
         }
         file_put_contents($dir . '/' . $name . '.json', $data);
         http_response_code(204);
@@ -38,9 +50,23 @@ function run() {
     }
 
     $json = file_get_contents($file);
-    if ($json === null ) {
+    if ($json === null) {
         http_response_code(500);
-        die('invalid data');
+        die('failed to read file');
+    }
+
+    if ($secret !== '') {
+        $json = trim(openssl_decrypt($json, $cryptMethod, $secret, 0, $iv), "\0");
+        if ($json === false) {
+            http_response_code(500);
+            die('invalid secret');
+        }
+    }
+
+    $data = json_decode($json, true);
+    if ($data === null) {
+        http_response_code(500);
+        die('invalid json data');
     }
 
     if ($ext === 'json') {
@@ -53,8 +79,6 @@ function run() {
         http_response_code(400);
         die('invalid ext');
     }
-
-    $data = json_decode($json, true);
 
     if ($ext === 'txt') {
         header('Content-Type: text/plain');

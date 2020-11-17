@@ -11,10 +11,10 @@
 
 保存用の名前( `name` )をクエリパラメータにて指定します。
 
-※ 公開URLに設置する場合、暗号化通信を利用した上で、推測不可能な `name` を指定することを推奨します。
+※ 暗号化通信を利用した上で、推測不可能な `name` および `secret` を指定することを推奨します。
 
 ```sh
-curl -d @data/example.json -X PUT 'https://example.com/?name=test'
+curl -d @data/example.json -X PUT 'https://example.com/?name=test&secret=hoge'
 ```
 
 ## スケジュールの取得
@@ -28,7 +28,7 @@ curl -d @data/example.json -X PUT 'https://example.com/?name=test'
 拡張子 `ics` にて `url` パラメータを指定した場合、イベントに指定されたURLをベースとしたイベントURLを付与します。
 
 ```sh
-curl 'https://example.com/?name=test&ext=ics&url=https://example.com/scripts/grn.exe'
+curl 'https://example.com/?name=test&secret=hoge&ext=ics&url=https://example.com/scripts/grn.exe'
 ```
 
 ## Query Parameter
@@ -38,6 +38,8 @@ curl 'https://example.com/?name=test&ext=ics&url=https://example.com/scripts/grn
 | name | スケジュール名 | 取得するスケジュール名(ID)
 | ext | 拡張子 | 取得する拡張子 (ics/jsonのみ)
 | url | ベースURL | イベントURL生成用ベースURL
+| secret | 暗号キー | 指定された場合、保存・取得時に暗号化/復号化します
+| iv | 初期化ベクトル | 16進数文字列 ( `secret` 指定時のみ有効)
 
 ## Files
 
