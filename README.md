@@ -1,6 +1,6 @@
-# garoon-schedule-hoster
+# garoon-schedule-server
 
-雑にGaroon APIのJSONを受け付けてホストするアプリケーションです。
+雑にGaroon REST APIで取得した予定のJSONをPOSTして保存し、iCalendar形式でGETできるアプリケーションです。
 
 WebHookでうけつけたデータを参照カレンダーとして利用することを想定しています。
 
@@ -40,9 +40,10 @@ curl 'https://example.com/?name=test&secret=hoge&ext=ics&url=https://example.com
 | :- | :- | :-
 | name | スケジュール名 | 取得するスケジュール名(ID)
 | ext | 拡張子 | 取得する拡張子 (ics/jsonのみ)
-| url | ベースURL | イベントURL生成用ベースURL
+| url | ベースURL | イベントURL生成用ベースURL (LOCATIONを設定します)
 | secret | 暗号キー | 指定された場合、保存・取得時に暗号化/復号化します
 | iv | 初期化ベクトル | 16進数文字列 ( `secret` 指定時のみ有効)
+| alarm | 通知時間 | 通知したい時間(N秒前)を秒で指定 (VALARMを設定します。カンマ区切りで複数指定可能です)
 
 ## Files
 
@@ -50,4 +51,3 @@ curl 'https://example.com/?name=test&secret=hoge&ext=ics&url=https://example.com
 | :- | :-
 | data/ | データを保存するディレクトリです。書き込み権限が必要です。
 | index.php | 本アプリケーションです。単一のPHPファイルで構成されています。
-
