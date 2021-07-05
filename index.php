@@ -13,6 +13,7 @@ function run() {
         $secret = isset($_GET['secret']) ? $_GET['secret'] : '';
         $alarms = isset($_GET['alarm']) ? explode(',', implode(',', (array) $_GET['alarm'])) : [];
         $maxAttendees = isset($_GET['max-attendees']) ? (int) $_GET['max-attendees'] : 20;
+        $skipKeywords = isset($_GET['skip-keywords']) ? explode(',', implode(',', (array) $_GET['skip-keywords'])) : [];
 
         $cryptMethod = 'AES-256-CBC';
         $hexIV = isset($_GET['iv']) ? $_GET['iv'] : 'b995ee5e4149975a575973f180192b1c';
@@ -63,6 +64,7 @@ function run() {
             'baseURL'      => $url,
             'maxAttendees' => $maxAttendees,
             'alarms'       => $alarms,
+            'skipKeywords' => $skipKeywords,
         ]);
 
         if ($ext === 'json') {
@@ -98,6 +100,8 @@ class Schedule
 
     protected $maxAttendees = 5;
 
+    protected $skipKeywords = [];
+
     public function __construct(string $json, array $options)
     {
         $this->data = json_decode($json, true);
@@ -113,6 +117,10 @@ class Schedule
                 case 'alarms':
                     foreach ((array) $val as $v) {
                         $this->alarms[] = abs((int) $v);
+                    }
+                case 'skipKeywords':
+                    foreach ((array) $val as $v) {
+                        $this->skipKeywords[] = $v;
                     }
                 break;
             }
@@ -162,6 +170,9 @@ class Schedule
         $data = [];
         foreach ($events as $ev) {
             $summary = ($ev['eventMenu'] ? "{$ev['eventMenu']}: " : '') . $ev['subject'];
+            if ($this->matchKeywords($summary)) {
+                continue;
+            }
             $data = array_merge(
                 $data,
                 [
@@ -196,6 +207,16 @@ class Schedule
             );
         }
         return $data;
+    }
+
+    protected function matchKeywords($summary)
+    {
+        foreach ($this->skipKeywords as $keyword) {
+            if (strpos($summary, $keyword) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static function field($name, $value)
