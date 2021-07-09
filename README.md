@@ -44,6 +44,8 @@ curl 'https://example.com/?name=test&secret=hoge&ext=ics&url=https://example.com
 | secret | 暗号キー | 指定された場合、保存・取得時に暗号化/復号化します
 | iv | 初期化ベクトル | 16進数文字列 ( `secret` 指定時のみ有効)
 | alarm | 通知時間 | 通知したい時間(N秒前)を秒で指定 (VALARMを設定します。カンマ区切りで複数指定可能です)
+| max-attendees | 参加者名を取得する最大値 | 指定以上の参加者が存在する場合、予定本文に含めず省略します (初期値: 20)
+| skip-keywords | 取得しないキーワード | SUMMARYに一致するキーワードが含まれる場合予定として取得しません (カンマ区切りで複数指定可能です)
 
 ## Files
 
