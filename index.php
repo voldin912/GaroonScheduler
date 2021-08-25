@@ -212,7 +212,7 @@ class Schedule
     protected function matchKeywords($summary)
     {
         foreach ($this->skipKeywords as $keyword) {
-            if (strpos($summary, $keyword) !== false) {
+            if (stripos($summary, $keyword) !== false) {
                 return true;
             }
         }
