@@ -4,89 +4,233 @@ mb_internal_encoding("UTF-8");
 
 function run() {
     try {
-        $dir = dirname(__FILE__) . '/data';
-
-        $method = $_SERVER['REQUEST_METHOD'];
-        $name = isset($_GET['name']) ? $_GET['name'] : '';
-        $ext = isset($_GET['ext']) ? $_GET['ext'] : 'json';
-        $url = isset($_GET['url']) ? rtrim($_GET['url'], '/') : '';
-        $secret = isset($_GET['secret']) ? $_GET['secret'] : '';
-        $alarms = isset($_GET['alarm']) ? explode(',', implode(',', (array) $_GET['alarm'])) : [];
-        $maxAttendees = isset($_GET['max-attendees']) ? (int) $_GET['max-attendees'] : 20;
-        $skipKeywords = isset($_GET['skip-keywords']) ? explode(',', implode(',', (array) $_GET['skip-keywords'])) : [];
-
-        $cryptMethod = 'AES-256-CBC';
-        $hexIV = isset($_GET['iv']) ? $_GET['iv'] : 'b995ee5e4149975a575973f180192b1c';
-        $iv = hex2bin($hexIV);
+        $name = Request::query('name');
 
         if ($name === '') {
-            throw new RuntimeException('name required.', 400);
+            throw new HTTPException('name is required', 400);
         }
         if (!preg_match('/\A[a-z0-9\-]+\z/', $name)) {
-            throw new RuntimeException('name must be alpha, number, and hyphen.', 400);
+            throw new HTTPException('invalid name', 400);
         }
 
-        if ($method === 'POST' || $method === 'PUT') {
-            $data = file_get_contents('php://input');
-            if (json_decode($data) === null) {
-                throw new RuntimeException('invalid json data', 400);
-            }
-            if ($secret !== '') {
-                $data = openssl_encrypt($data, $cryptMethod, $secret, 0, $iv);
-            }
-            file_put_contents($dir . '/' . $name . '.json', $data);
-            http_response_code(204);
-            exit;
-        }
-
-        if ($method !== 'GET') {
-            throw new RuntimeException('invalid method', 400);
-        }
-
-        $file = $dir . '/' . $name . '.json';
-        if (!file_exists($file)) {
-            throw new RuntimeException('not found', 404);
-        }
-
-        $json = file_get_contents($file);
-        if ($json === null) {
-            throw new RuntimeException('failed to read file');
-        }
-
-        if ($secret !== '') {
-            $json = trim(openssl_decrypt($json, $cryptMethod, $secret, 0, $iv), "\0");
-            if ($json === false) {
-                throw new RuntimeException('invalid secret', 400);
-            }
-        }
-
-        $schedule = new Schedule($json, [
-            'baseURL'      => $url,
-            'maxAttendees' => $maxAttendees,
-            'alarms'       => $alarms,
-            'skipKeywords' => $skipKeywords,
+        Store::init([
+            'method' => Request::server('AUTH_METHOD'),
+            'iv' => Request::server('AUTH_IV'),
+            'user' => Request::user(),
+            'password' => Request::password(),
         ]);
 
-        if ($ext === 'json') {
-            header('Content-Type: application/json');
-            echo $json;
+        switch (Request::method()) {
+        case 'POST': /* fall through */
+        case 'PUT':
+            if (Store::exists($name) && !Store::load($name)) {
+                throw new UnauthorizedException();
+            }
+
+            if (!($data = Request::json())) {
+                throw HTTPException('invalid body', 400);
+            }
+
+            Store::save($name, $data);
+            http_response_code(204);
             exit;
-        }
+        case 'GET':
+            if (!Store::exists($name)) {
+                throw new HTTPException('not found', 404);
+            }
+            if (!($data = Store::load($name))) {
+                throw new UnauthorizedException();
+            }
+            $schedule = new Schedule($data, [
+                'baseURL'      => rtrim(Request::query('url'), '/'),
+                'maxAttendees' => (int) Request::query('max-attendees', 20),
+                'alarms'       => array_filter(explode(',', implode(',', (array) Request::query('alarm', [])))),
+                'skipKeywords' => array_filter(explode(',', implode(',', (array) Request::query('skip-keywords', [])))),
+            ]);
 
-        if ($ext !== 'ics' && $ext !== 'txt') {
-            throw new RuntimeException('invalid ext', 400);
+            switch (Request::query('ext', 'ics')) {
+            case 'ics':
+                header('Content-Type: text/calendar');
+                echo $schedule->toICal();
+                exit;
+            case 'txt':
+                header('Content-Type: text/plain');
+                echo $schedule->toICal();
+                exit;
+            case 'json':
+                header('Content-Type: application/json');
+                echo $schedule->toJSON();
+                exit;
+            default:
+                throw new HTTPException('invalid ext', 400);
+            }
+        default:
+            throw new HTTPException('invalid json data', 400);
         }
-
-        if ($ext === 'txt') {
-            header('Content-Type: text/plain');
-        } else {
-            header('Content-Type: text/calendar');
-        }
-
-        echo $schedule->toICal();
-    } catch (Exception $e) {
+    } catch (UnauthorizedException $e) {
+        header("X-Debug-Unauthorized: " . $e->getLine());
+        header('WWW-Authenticate: Basic realm="Schedule user and password"');
+        header('HTTP/1.0 401 Unauthorized');
+        echo 'Unauthorized';
+        exit;
+    } catch(HTTPException $e) {
+        header("X-Debug-Exception: " . $e->getLine());
         http_response_code($e->getCode() ?: 500);
         echo $e->getMessage();
+        exit;
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo 'Internal Error';
+        var_dump($e);
+        exit;
+    }
+}
+
+class Store
+{
+    protected $dir = '';
+    protected $method = '';
+    protected $iv = '';
+    protected $user = '';
+    protected $password = '';
+
+    protected static $instance;
+
+    protected function __construct(array $params)
+    {
+        $params = array_filter($params) + [
+            'dir' => dirname(__FILE__) . '/data',
+            'method' => 'AES-256-CBC',
+            'iv' => 'b995ee5e4149975a575973f180192b1c',
+            'user' => 'user',
+            'password' => 'password',
+        ];
+
+        $this->method = $params['method'];
+        $this->iv = hex2bin($params['iv']);
+        $this->dir = $params['dir'];
+        $this->user = $params['user'];
+        $this->password = $params['password'];
+    }
+
+    static protected function getInstance(array $params = []): Store
+    {
+        if (static::$instance === null) {
+            static::$instance = new static($params);
+        }
+        return static::$instance;
+    }
+
+    static public function init(array $params)
+    {
+        if (static::$instance !== null) {
+            throw new RuntimeException('already initialized');
+        }
+        return static::getInstance($params);
+    }
+
+    public static function list()
+    {
+        if (!($dh = opendir(static::getInstance()->dir))) {
+            throw new RuntimeException('failed to open dir: ' . static::getInstance()->dir);
+        }
+        $ls = [];
+        while (($file = readdir($dh)) !== false) {
+            $ls[] = $file;
+        }
+        return $ls;
+    }
+
+    static public function exists(string $name)
+    {
+        return file_exists(static::path($name));
+    }
+
+    static public function load(string $name)
+    {
+        $json = json_decode(file_get_contents(static::path($name)), true);
+        if (!$json) {
+            throw new RuntimeException("failed to load file, name: $name");
+        }
+
+        $store = static::getInstance();
+        if (
+            $json['user'] !== $store->user ||
+            ($data = openssl_decrypt($json['data'], $store->method, $store->password, 0, $store->iv)) === false
+        ) {
+            return null;
+        }
+        return json_decode(trim($data, "\0"), true);
+    }
+
+    static public function save(string $name, $data)
+    {
+        $store = static::getInstance();
+
+        $data = openssl_encrypt(json_encode($data), $store->method, $store->password, 0, $store->iv);
+
+        if (!file_put_contents(static::path($name), json_encode([
+            'user' => $store->user,
+            'data' => $data,
+        ]))) {
+            throw new RuntimeException('failed to store file: ' . static::path($name));
+        }
+    }
+
+    static public function delete(string $name)
+    {
+        if (!static::exists($name)) {
+            return false;
+        }
+
+        if (!unlink(static::path($name))) {
+            throw new RuntimeException('failed to unlink file: ' . static::path($name));
+        }
+
+        return true;
+    }
+
+    static protected function path($name)
+    {
+        return static::getInstance()->dir . '/' . $name . '.json';
+    }
+}
+
+class Request
+{
+    static public function method()
+    {
+        return strtoupper($_SERVER['REQUEST_METHOD']);
+    }
+
+    static public function server($name, $default = '')
+    {
+        return isset($_SERVER[$name]) ? $_SERVER[$name] : $default;
+    }
+
+    static public function user()
+    {
+        return static::server('PHP_AUTH_USER');
+    }
+
+    static public function password()
+    {
+        return static::server('PHP_AUTH_PW');
+    }
+
+    static public function query($name, $default = '')
+    {
+        return isset($_GET[$name]) ? $_GET[$name] : $default;
+    }
+
+    static public function body()
+    {
+        return file_get_contents('php://input');
+    }
+
+    static public function json()
+    {
+        return json_decode(static::body());
     }
 }
 
@@ -102,9 +246,9 @@ class Schedule
 
     protected $skipKeywords = [];
 
-    public function __construct(string $json, array $options)
+    public function __construct(array $data, array $options = [])
     {
-        $this->data = json_decode($json, true);
+        $this->data = $data;
 
         foreach ($options as $key => $val) {
             switch ($key) {
@@ -138,7 +282,7 @@ class Schedule
             [
                 'BEGIN:VCALENDAR',
                 'CALSCALE:GREGORIAN',
-                'PRODID:-//kamiaka//garoon-scheudle-server v1.0//JP',
+                'PRODID:-//kamiaka//garoon-scheudle-server v2.0//JP',
                 'METHOD:PUBLISH',
                 'VERSION:2.0',
                 'X-WR-CALNAME:Garoon Schedule',
@@ -173,6 +317,7 @@ class Schedule
             if ($this->matchKeywords($summary)) {
                 continue;
             }
+            $endField = $ev['isStartOnly'] ? 'start' : 'end';
             $data = array_merge(
                 $data,
                 [
@@ -183,7 +328,7 @@ class Schedule
                     static::iCalTimeField('LAST-MODIFIED', $ev['updatedAt'], 'UTC'),
                     static::iCalTimeField('DTSTAMP', $ev['updatedAt'], 'UTC'),
                     static::iCalTimeField('DTSTART', $ev['start']['dateTime'], $ev['start']['timeZone']),
-                    static::iCalTimeField('DTEND', $ev['end']['dateTime'], $ev['end']['timeZone']),
+                    static::iCalTimeField('DTEND', $ev[$endField]['dateTime'], $ev[$endField]['timeZone']),
                     static::field('CLASS', 'PRIVATE'),
                     static::field('SUMMARY', $summary),
                     static::field('DESCRIPTION', implode("\n", array_filter([
@@ -304,5 +449,9 @@ class Schedule
         return $id . '@' . preg_replace('@^https?://([^/]+).*@', '$1', $baseURL);
     }
 }
+
+class HTTPException extends RuntimeException {}
+
+class UnauthorizedException extends RuntimeException {}
 
 run();
