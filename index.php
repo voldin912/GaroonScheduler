@@ -343,7 +343,7 @@ class Schedule
                     static::field('LOCATION', empty($ev['facilities']) ? '' : implode(', ', array_map(function($item) {
                         return $item['name'];
                     }, $ev['facilities']))),
-                    static::field('URL', static::eventURL($ev['id'], $baseURL)),
+                    static::field('URL', static::eventURL($ev['id'], $baseURL, $ev['start']['dateTime'], $ev['start']['timeZone'])),
                 ],
                 static::iCalAlarms($alarms, $summary),
                 [
@@ -432,11 +432,18 @@ class Schedule
         return $str;
     }
 
-    static function eventURL($id, $baseURL = null) {
+    static function eventURL($id, $baseURL = null, $timeString = null, $zoneString = 'UTC') {
         if (empty($baseURL)) {
             return '';
         }
-        return $baseURL . '/schedule/view?event=' . $id;
+        $url = $baseURL . '/schedule/view?event=' . $id;
+        if (!empty($timeString)) {
+            $time = new DateTime($timeString);
+            $zone = new DateTimeZone($zoneString);
+            $time->setTimezone($zone);
+            $url .= '&bdate=' . $time->format('Y-m-d');
+        }
+        return $url;
     }
 
     static function uid($id, $baseURL = null) {
